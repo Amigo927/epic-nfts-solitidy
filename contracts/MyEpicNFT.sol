@@ -58,18 +58,22 @@ contract MyEpicNFT is ERC721URIStorage {
     return uint256(keccak256(abi.encodePacked(input)));
   }
 
-  function makeAnEpicNFT() public {
+ function makeAnEpicNFT() public {
+    // Get the current token ID and increment it for the next minting
     uint256 newItemId = _tokenIds.current();
+    _tokenIds.increment();
 
+    // Generate a random combination of words to create the NFT name
     string memory first = pickRandomFirstWord(newItemId);
     string memory second = pickRandomSecondWord(newItemId);
     string memory third = pickRandomThirdWord(newItemId);
     string memory combinedWord = string(abi.encodePacked(first, second, third));
 
-    // Add the random color in.
+    // Generate the SVG data for the NFT with a random color
     string memory randomColor = pickRandomColor(newItemId);
     string memory finalSvg = string(abi.encodePacked(svgPartOne, randomColor, svgPartTwo, combinedWord, "</text></svg>"));
 
+    // Encode the NFT metadata in JSON format and convert it to base64
     string memory json = Base64.encode(
         bytes(
             string(
@@ -84,20 +88,22 @@ contract MyEpicNFT is ERC721URIStorage {
         )
     );
 
+    // Generate the final token URI with the NFT metadata
     string memory finalTokenUri = string(
         abi.encodePacked("data:application/json;base64,", json)
     );
 
-    console.log("\n--------------------");
-    console.log(finalTokenUri);
-    console.log("--------------------\n");
+    // Mint the NFT to the caller and set its metadata
+    // Error handling: minting or setting the token URI can fail if the contract is paused or if there is a storage error
+    // Gas optimization: avoid redundant writes by setting the token URI only once
+    try _safeMint(msg.sender, newItemId) {
+        _setTokenURI(newItemId, finalTokenUri);
+    } catch (Error(string memory error)) {
+        revert(string(abi.encodePacked("Error: ", error)));
+    }
 
-    _safeMint(msg.sender, newItemId);
-  
-    _setTokenURI(newItemId, finalTokenUri);
-  
-    _tokenIds.increment();
-    console.log("An NFT w/ ID %s has been minted to %s", newItemId, msg.sender);
-    emit NewEpicNFTMinted(msg.sender, newItemId);
+    // Log the minted NFT information and emit the NewEpicNFTMinted event
+    console.log("An NFT w/ ID %s and name %s has been minted to %s", newItemId, combinedWord, msg.sender);
+    emit NewEpicNFTMinted(msg.sender, newItemId, combinedWord, finalTokenUri);
   }
 }
